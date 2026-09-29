@@ -21,10 +21,10 @@ git_info() {
 dir_display() {
   git rev-parse --is-inside-work-tree &>/dev/null
   if [[ $? -eq 0 ]]; then
-    # Dentro de repo → só nome da pasta atual
+    # Inside a repo → show only the current folder name
     print "%F{blue}${PWD:t}%f"
   else
-    # Fora → caminho normal
+    # Outside a repo → show the normal path
     print "%F{blue}%~%f"
   fi
 }
