@@ -7,10 +7,10 @@ This repository contains versioned settings and tooling configuration used acros
 It may include configuration for tools such as:
 
 - Git
-- Zsh
 - Powershell
+- Setup and bootstrap scripts
 - VS Code
-- setup and bootstrap scripts
+- Zsh
 
 Environment-specific or sensitive information, such as credentials, tokens, private keys, and internal configuration, is intentionally kept out of this repository.
 
@@ -19,10 +19,10 @@ Environment-specific or sensitive information, such as credentials, tokens, priv
 ```text
 dotfiles/
 ├── git/
-├── zsh/
 ├── pwsh/
+├── scripts/
 ├── vscode/
-└── scripts/
+└── zsh/
 ```
 
 The structure may evolve as new tools and configurations are added.
