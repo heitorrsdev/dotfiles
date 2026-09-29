@@ -1,0 +1,9 @@
+[user]
+        name = Heitor Rosa
+        email = heitorrs.dev@gmail.com
+[core]
+        editor = code --wait
+[pull]
+        rebase = true
+[push]
+        autoSetupRemote = true
