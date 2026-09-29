@@ -1,0 +1,58 @@
+{
+    "codeium.enableCodeLens": false,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "diffEditor.renderSideBySide": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "always"
+    },
+    "editor.formatOnType": true,
+    "editor.tabSize": 2,
+    "eslint.format.enable": true,
+    "explorer.confirmDragAndDrop": false,
+    "files.autoSave": "afterDelay",
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "git.autofetch": true,
+    "git.autofetchPeriod": 5,
+    "git.confirmSync": false,
+    "git.suggestSmartCommit": false,
+    "indenticator.inner.showIndentGuides": true,
+    "indenticator.showIndentGuide": false,
+    "js.suggest.paths": false,
+    "redhat.telemetry.enabled": false,
+    "remote.autoForwardPortsSource": "hybrid",
+    "security.workspace.trust.untrustedFiles": "open",
+    "ts.suggest.paths": false,
+    "workbench.iconTheme": "bearded-icons",
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "notebook.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true,
+    "console-ninja.featureSet": "Community",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": [
+                "${env:windir}\\Sysnative\\cmd.exe",
+                "${env:windir}\\System32\\cmd.exe"
+            ],
+            "args": [],
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "args": [
+                "--login",
+                "-i"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "[javascript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "workbench.colorTheme": "dark-sand-theme"
+}
