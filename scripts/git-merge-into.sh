@@ -3,11 +3,11 @@
 # Pushes the current branch, merges it into a target branch and switches back.
 #
 # Usage:
-#   git-this-to.sh [target] [-p|--push]
+#   git-merge-into.sh [target] [-p|--push]
 #
 # Examples:
-#   git-this-to.sh              # merges the current branch into dev
-#   git-this-to.sh homolog -p   # merges into homolog and pushes homolog
+#   git-merge-into.sh              # merges the current branch into dev
+#   git-merge-into.sh homolog -p   # merges into homolog and pushes homolog
 #
 # Notes:
 #   - The default target is 'dev'.
