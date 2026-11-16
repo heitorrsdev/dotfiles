@@ -1,132 +1,132 @@
 #!/usr/bin/env bash
 #
-# Troca todos os repositorios da pasta para uma branch e atualiza com pull.
+# Switches every repository in the folder to a branch and updates it with pull.
 #
-# Uso:
-#   git-switch-n-pull.sh <branch> [-p|--path <pasta>] [-i|--ignorar <repo>]...
+# Usage:
+#   git-switch-n-pull.sh <branch> [-p|--path <folder>] [-i|--ignore <repo>]...
 #
-# Exemplo:
+# Examples:
 #   git-switch-n-pull.sh homolog
 #   git-switch-n-pull.sh homolog -p ~/back -i core -i out
 #
-# Notas:
-#   - O core nunca e trocado (padrao de --ignorar; informar --ignorar substitui o padrao).
-#   - Sem --path, usa o diretorio atual.
-#   - Repositorio com alteracoes locais e ignorado, para nao perder trabalho.
-#   - Repositorio sem a branch continua na branch atual.
-#   - O pull usa --ff-only: nunca cria merge. Se a branch divergiu da origin, e reportado como falha.
-#   - Retorna exit code 1 se algum repositorio falhar.
+# Notes:
+#   - core is never switched (default of --ignore; passing --ignore replaces the default).
+#   - Without --path, uses the current directory.
+#   - Repositories with local changes are skipped, so no work is lost.
+#   - Repositories without the branch stay on their current branch.
+#   - pull uses --ff-only: never creates a merge. If the branch diverged from origin, it is reported as a failure.
+#   - Exits with code 1 if any repository fails.
 
 set -uo pipefail
 
-uso() {
-    echo "Uso: $(basename "$0") <branch> [-p|--path <pasta>] [-i|--ignorar <repo>]..." >&2
+usage() {
+    echo "Usage: $(basename "$0") <branch> [-p|--path <folder>] [-i|--ignore <repo>]..." >&2
     exit 2
 }
 
 branch=''
 path='.'
-ignorar=()
+ignore=()
 
 while (($#)); do
     case "$1" in
         -p | --path)
-            [[ $# -ge 2 ]] || uso
+            [[ $# -ge 2 ]] || usage
             path="$2"
             shift 2
             ;;
-        -i | --ignorar)
-            [[ $# -ge 2 ]] || uso
-            ignorar+=("$2")
+        -i | --ignore | --ignorar)
+            [[ $# -ge 2 ]] || usage
+            ignore+=("$2")
             shift 2
             ;;
-        -h | --help) uso ;;
-        -*) uso ;;
+        -h | --help) usage ;;
+        -*) usage ;;
         *)
-            [[ -z "$branch" ]] || uso
+            [[ -z "$branch" ]] || usage
             branch="$1"
             shift
             ;;
     esac
 done
 
-[[ -n "$branch" ]] || uso
-((${#ignorar[@]})) || ignorar=('core')
+[[ -n "$branch" ]] || usage
+((${#ignore[@]})) || ignore=('core')
 
 if [[ -t 1 ]]; then
-    declare -A cores=(
+    declare -A colors=(
         ['OK']=$'\033[0;32m'
-        ['SEM PULL']=$'\033[0;33m'
-        ['SEM BRANCH']=$'\033[0;33m'
-        ['IGNORADO']=$'\033[0;33m'
-        ['FALHA']=$'\033[0;31m'
+        ['NO PULL']=$'\033[0;33m'
+        ['NO BRANCH']=$'\033[0;33m'
+        ['SKIPPED']=$'\033[0;33m'
+        ['FAILED']=$'\033[0;31m'
     )
-    ciano=$'\033[0;36m'
-    vermelho=$'\033[0;31m'
+    cyan=$'\033[0;36m'
+    red=$'\033[0;31m'
     nc=$'\033[0m'
 else
-    declare -A cores=()
-    ciano='' vermelho='' nc=''
+    declare -A colors=()
+    cyan='' red='' nc=''
 fi
 
-# Executa git no repositorio; a saida (stdout + stderr) fica em $saida.
+# Runs git in the repository; the output (stdout + stderr) is stored in $output.
 invoke_git() {
     local repo="$1"
     shift
-    saida=$(git -C "$repo" "$@" 2>&1)
+    output=$(git -C "$repo" "$@" 2>&1)
 }
 
-ultima_linha() {
+last_line() {
     printf '%s\n' "$1" | sed '/^[[:space:]]*$/d' | tail -n 1
 }
 
-# Define $resultado e $detalhe.
-update_repositorio() {
-    local repo="$1" saida antes local_ok=0 remota_ok=0
+# Sets $result and $detail.
+update_repository() {
+    local repo="$1" output before local_ok=0 remote_ok=0
 
     if ! invoke_git "$repo" status --porcelain; then
-        resultado='FALHA' detalhe=$(ultima_linha "$saida")
+        result='FAILED' detail=$(last_line "$output")
         return
     fi
-    if [[ -n "$saida" ]]; then
-        resultado='IGNORADO' detalhe='possui alteracoes locais'
+    if [[ -n "$output" ]]; then
+        result='SKIPPED' detail='has local changes'
         return
     fi
 
     if ! invoke_git "$repo" fetch --prune origin; then
-        resultado='FALHA' detalhe="fetch: $(ultima_linha "$saida")"
+        result='FAILED' detail="fetch: $(last_line "$output")"
         return
     fi
 
     invoke_git "$repo" show-ref --verify --quiet "refs/heads/$branch" && local_ok=1
-    invoke_git "$repo" show-ref --verify --quiet "refs/remotes/origin/$branch" && remota_ok=1
-    if ((!local_ok && !remota_ok)); then
-        resultado='SEM BRANCH' detalhe='nao existe localmente nem na origin'
+    invoke_git "$repo" show-ref --verify --quiet "refs/remotes/origin/$branch" && remote_ok=1
+    if ((!local_ok && !remote_ok)); then
+        result='NO BRANCH' detail='does not exist locally nor on origin'
         return
     fi
 
     if ! invoke_git "$repo" switch "$branch"; then
-        resultado='FALHA' detalhe="switch: $(ultima_linha "$saida")"
+        result='FAILED' detail="switch: $(last_line "$output")"
         return
     fi
 
-    if ((!remota_ok)); then
-        resultado='SEM PULL' detalhe='branch existe apenas localmente'
+    if ((!remote_ok)); then
+        result='NO PULL' detail='branch exists only locally'
         return
     fi
 
     invoke_git "$repo" rev-parse HEAD
-    antes="$saida"
+    before="$output"
     if ! invoke_git "$repo" pull --ff-only; then
-        resultado='FALHA' detalhe="pull: $(ultima_linha "$saida")"
+        result='FAILED' detail="pull: $(last_line "$output")"
         return
     fi
 
     invoke_git "$repo" rev-parse HEAD
-    if [[ "$saida" == "$antes" ]]; then
-        resultado='OK' detalhe='ja estava atualizada'
+    if [[ "$output" == "$before" ]]; then
+        result='OK' detail='already up to date'
     else
-        resultado='OK' detalhe='atualizada com pull'
+        result='OK' detail='updated with pull'
     fi
 }
 
@@ -134,39 +134,39 @@ repos=()
 for dir in "$path"/*/; do
     [[ -d "$dir" ]] || continue
     dir="${dir%/}"
-    nome="${dir##*/}"
-    for ign in "${ignorar[@]}"; do
-        [[ "$nome" == "$ign" ]] && continue 2
+    name="${dir##*/}"
+    for ign in "${ignore[@]}"; do
+        [[ "$name" == "$ign" ]] && continue 2
     done
     [[ -e "$dir/.git" ]] && repos+=("$dir")
 done
 
 if ((${#repos[@]} == 0)); then
-    echo "${vermelho}Nenhum repositorio encontrado em $path${nc}"
+    echo "${red}No repositories found in $path${nc}"
     exit 1
 fi
 
-printf '%sTrocando %d repositorios para '\''%s'\''%s\n\n' "$ciano" "${#repos[@]}" "$branch" "$nc"
+printf '%sSwitching %d repositories to '\''%s'\''%s\n\n' "$cyan" "${#repos[@]}" "$branch" "$nc"
 
-declare -A contagem=()
-ordem=()
-falhou=0
+declare -A count=()
+order=()
+failed=0
 
 for repo in "${repos[@]}"; do
-    update_repositorio "$repo"
+    update_repository "$repo"
     invoke_git "$repo" branch --show-current
-    atual="$saida"
+    current="$output"
 
-    printf '%s%-10s %-28s [%s] %s%s\n' "${cores[$resultado]:-}" "$resultado" "${repo##*/}" "$atual" "$detalhe" "$nc"
+    printf '%s%-10s %-28s [%s] %s%s\n' "${colors[$result]:-}" "$result" "${repo##*/}" "$current" "$detail" "$nc"
 
-    [[ -n "${contagem[$resultado]:-}" ]] || ordem+=("$resultado")
-    contagem[$resultado]=$((${contagem[$resultado]:-0} + 1))
-    [[ "$resultado" == 'FALHA' ]] && falhou=1
+    [[ -n "${count[$result]:-}" ]] || order+=("$result")
+    count[$result]=$((${count[$result]:-0} + 1))
+    [[ "$result" == 'FAILED' ]] && failed=1
 done
 
 echo
-for r in "${ordem[@]}"; do
-    printf '%s%-10s %d%s\n' "${cores[$r]:-}" "$r" "${contagem[$r]}" "$nc"
+for r in "${order[@]}"; do
+    printf '%s%-10s %d%s\n' "${colors[$r]:-}" "$r" "${count[$r]}" "$nc"
 done
 
-exit "$falhou"
+exit "$failed"

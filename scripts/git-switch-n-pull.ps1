@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-    Troca todos os repositorios da pasta para uma branch e atualiza com pull.
+    Switches every repository in the folder to a branch and updates it with pull.
 
 .EXAMPLE
-    .\trocar-branch.ps1 homolog
+    .\git-switch-n-pull.ps1 homolog
 
 .NOTES
-    - O core nunca e trocado (lista em -Ignorar).
-    - Repositorio com alteracoes locais e ignorado, para nao perder trabalho.
-    - Repositorio sem a branch continua na branch atual.
-    - O pull usa --ff-only: nunca cria merge. Se a branch divergiu da origin, e reportado como falha.
-    - Retorna exit code 1 se algum repositorio falhar.
+    - core is never switched (listed in -Ignore).
+    - Repositories with local changes are skipped, so no work is lost.
+    - Repositories without the branch stay on their current branch.
+    - pull uses --ff-only: never creates a merge. If the branch diverged from origin, it is reported as a failure.
+    - Exits with code 1 if any repository fails.
 #>
 param(
     [Parameter(Mandatory = $true, Position = 0)]
@@ -18,83 +18,82 @@ param(
 
     [string]$Path = $PSScriptRoot,
 
-    [string[]]$Ignorar = @('core')
+    [Alias('Ignorar')]
+    [string[]]$Ignore = @('core')
 )
 
 function Invoke-Git {
     param([string]$Repo, [string[]]$GitArgs)
 
-    $saida = & git -C $Repo @GitArgs 2>&1 | ForEach-Object { $_.ToString() }
+    $output = & git -C $Repo @GitArgs 2>&1 | ForEach-Object { $_.ToString() }
     [pscustomobject]@{
-        Ok    = ($LASTEXITCODE -eq 0)
-        Saida = ($saida -join "`n").Trim()
+        Ok     = ($LASTEXITCODE -eq 0)
+        Output = ($output -join "`n").Trim()
     }
 }
 
-function Get-UltimaLinha {
-    param([string]$Texto)
+function Get-LastLine {
+    param([string]$Text)
 
-    ($Texto -split "`n" | Where-Object { $_.Trim() } | Select-Object -Last 1)
+    ($Text -split "`n" | Where-Object { $_.Trim() } | Select-Object -Last 1)
 }
 
-function Update-Repositorio {
+function Update-Repository {
     param([string]$Repo)
 
     $status = Invoke-Git $Repo @('status', '--porcelain')
-    if (-not $status.Ok) { return 'FALHA', (Get-UltimaLinha $status.Saida) }
-    if ($status.Saida) { return 'IGNORADO', 'possui alteracoes locais' }
+    if (-not $status.Ok) { return 'FAILED', (Get-LastLine $status.Output) }
+    if ($status.Output) { return 'SKIPPED', 'has local changes' }
 
     $fetch = Invoke-Git $Repo @('fetch', '--prune', 'origin')
-    if (-not $fetch.Ok) { return 'FALHA', "fetch: $(Get-UltimaLinha $fetch.Saida)" }
+    if (-not $fetch.Ok) { return 'FAILED', "fetch: $(Get-LastLine $fetch.Output)" }
 
     $local = (Invoke-Git $Repo @('show-ref', '--verify', '--quiet', "refs/heads/$Branch")).Ok
-    $remota = (Invoke-Git $Repo @('show-ref', '--verify', '--quiet', "refs/remotes/origin/$Branch")).Ok
-    if (-not $local -and -not $remota) { return 'SEM BRANCH', 'nao existe localmente nem na origin' }
+    $remote = (Invoke-Git $Repo @('show-ref', '--verify', '--quiet', "refs/remotes/origin/$Branch")).Ok
+    if (-not $local -and -not $remote) { return 'NO BRANCH', 'does not exist locally nor on origin' }
 
     $switch = Invoke-Git $Repo @('switch', $Branch)
-    if (-not $switch.Ok) { return 'FALHA', "switch: $(Get-UltimaLinha $switch.Saida)" }
+    if (-not $switch.Ok) { return 'FAILED', "switch: $(Get-LastLine $switch.Output)" }
 
-    if (-not $remota) { return 'SEM PULL', 'branch existe apenas localmente' }
+    if (-not $remote) { return 'NO PULL', 'branch exists only locally' }
 
-    $antes = (Invoke-Git $Repo @('rev-parse', 'HEAD')).Saida
+    $before = (Invoke-Git $Repo @('rev-parse', 'HEAD')).Output
     $pull = Invoke-Git $Repo @('pull', '--ff-only')
-    if (-not $pull.Ok) { return 'FALHA', "pull: $(Get-UltimaLinha $pull.Saida)" }
+    if (-not $pull.Ok) { return 'FAILED', "pull: $(Get-LastLine $pull.Output)" }
 
-    if ((Invoke-Git $Repo @('rev-parse', 'HEAD')).Saida -eq $antes) { return 'OK', 'ja estava atualizada' }
-    return 'OK', 'atualizada com pull'
+    if ((Invoke-Git $Repo @('rev-parse', 'HEAD')).Output -eq $before) { return 'OK', 'already up to date' }
+    return 'OK', 'updated with pull'
 }
 
-$cores = @{
-    'OK'         = 'Green'
-    'SEM PULL'   = 'Yellow'
-    'SEM BRANCH' = 'Yellow'
-    'IGNORADO'   = 'Yellow'
-    'FALHA'      = 'Red'
+$colors = @{
+    'OK'        = 'Green'
+    'NO PULL'   = 'Yellow'
+    'NO BRANCH' = 'Yellow'
+    'SKIPPED'   = 'Yellow'
+    'FAILED'    = 'Red'
 }
 
 $repos = Get-ChildItem -LiteralPath $Path -Directory |
-    Where-Object { $Ignorar -notcontains $_.Name -and (Test-Path -LiteralPath (Join-Path $_.FullName '.git')) }
+    Where-Object { $Ignore -notcontains $_.Name -and (Test-Path -LiteralPath (Join-Path $_.FullName '.git')) }
 
 if (-not $repos) {
-    Write-Host "Nenhum repositorio encontrado em $Path" -ForegroundColor Red
+    Write-Host "No repositories found in $Path" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Trocando $(@($repos).Count) repositorios para '$Branch'`n" -ForegroundColor Cyan
+Write-Host "Switching $(@($repos).Count) repositories to '$Branch'`n" -ForegroundColor Cyan
 
-$resultados = foreach ($repo in $repos) {
-    $resultado, $detalhe = Update-Repositorio $repo.FullName
-    $atual = (Invoke-Git $repo.FullName @('branch', '--show-current')).Saida
+$results = foreach ($repo in $repos) {
+    $result, $detail = Update-Repository $repo.FullName
+    $current = (Invoke-Git $repo.FullName @('branch', '--show-current')).Output
 
-    Write-Host ("{0,-10} {1,-28} [{2}] {3}" -f $resultado, $repo.Name, $atual, $detalhe) -ForegroundColor $cores[$resultado]
-    [pscustomobject]@{ Resultado = $resultado; Repositorio = $repo.Name }
+    Write-Host ("{0,-10} {1,-28} [{2}] {3}" -f $result, $repo.Name, $current, $detail) -ForegroundColor $colors[$result]
+    [pscustomobject]@{ Result = $result; Repository = $repo.Name }
 }
 
 Write-Host ''
-$resultados | Group-Object Resultado | ForEach-Object {
-    Write-Host ("{0,-10} {1}" -f $_.Name, $_.Count) -ForegroundColor $cores[$_.Name]
+$results | Group-Object Result | ForEach-Object {
+    Write-Host ("{0,-10} {1}" -f $_.Name, $_.Count) -ForegroundColor $colors[$_.Name]
 }
 
-if ($resultados | Where-Object { $_.Resultado -eq 'FALHA' }) { exit 1 }
-
-
+if ($results | Where-Object { $_.Result -eq 'FAILED' }) { exit 1 }
