@@ -35,7 +35,7 @@ while (($#)); do
             path="$2"
             shift 2
             ;;
-        -i | --ignore | --ignorar)
+        -i | --ignore)
             [[ $# -ge 2 ]] || usage
             ignore+=("$2")
             shift 2

@@ -18,7 +18,6 @@ param(
 
     [string]$Path = $PSScriptRoot,
 
-    [Alias('Ignorar')]
     [string[]]$Ignore = @('core')
 )
 
