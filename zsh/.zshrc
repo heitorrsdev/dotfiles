@@ -60,6 +60,8 @@ setopt auto_cd auto_pushd multios interactivecomments extended_glob
 # ================================
 # TOOLS
 # ================================
+typeset -U path PATH
+
 export PATH="$HOME/.local/bin:$PATH"
 export NODE_OPTIONS="--max-old-space-size=4096"
 
@@ -86,10 +88,3 @@ source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
 
 source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
-# fnm
-FNM_PATH="/home/heitorrsdev/.local/share/fnm"
-if [ -d "$FNM_PATH" ]; then
-  export PATH="$FNM_PATH:$PATH"
-  eval "$(fnm env --shell zsh)"
-fi
