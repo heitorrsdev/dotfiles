@@ -62,6 +62,13 @@ setopt auto_cd auto_pushd multios interactivecomments extended_glob
 # ================================
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+JDK_PATH="$HOME/.local/share/jdks/jdk-17.0.12"
+
+if [ -d "$JDK_PATH" ]; then
+  export JAVA_HOME="$JDK_PATH"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 FNM_PATH="$HOME/.local/share/fnm"
 
 if [ -d "$FNM_PATH" ]; then
