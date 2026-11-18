@@ -60,6 +60,7 @@ setopt auto_cd auto_pushd multios interactivecomments extended_glob
 # ================================
 # TOOLS
 # ================================
+export PATH="$HOME/.local/bin:$PATH"
 export NODE_OPTIONS="--max-old-space-size=4096"
 
 JDK_PATH="$HOME/.local/share/jdks/jdk-17.0.12"
