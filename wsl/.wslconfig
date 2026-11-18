@@ -1,0 +1,11 @@
+# Copy to C:\Users\<user>\.wslconfig (Windows does not follow WSL symlinks).
+# Apply with `wsl --shutdown` in PowerShell; it stops every distro and Docker Desktop.
+
+[wsl2]
+# Memory shared by every distro and Docker Desktop (default: 50% of the host RAM).
+memory=16GB
+swap=8GB
+
+[experimental]
+# Gradually returns idle memory (page cache) to Windows.
+autoMemoryReclaim=gradual
